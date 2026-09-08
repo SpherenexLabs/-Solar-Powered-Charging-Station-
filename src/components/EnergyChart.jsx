@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -21,16 +22,44 @@ ChartJS.register(
   Legend
 );
 
-function EnergyChart({ liveData }) {
-  const labels = ["Voltage", "Current", "Load", "Battery", "Energy"];
+const HISTORY_POINTS = 12;
+
+function EnergyChart({ live }) {
+  const labels = ["Voltage (V)", "Current (A)", "Power (W)", "Battery (%)", "Temp (°C)"];
 
   const values = [
-    liveData?.voltage || 0,
-    liveData?.current || 0,
-    liveData?.load || 0,
-    liveData?.battery || 0,
-    liveData?.energy || 0
+    live?.voltage || 0,
+    live?.current || 0,
+    live?.power || 0,
+    live?.battery || 0,
+    live?.temperature || 0
   ];
+
+  /* Rolling power history so the trend line means something */
+  const [history, setHistory] = useState([]);
+  const latest = useRef({ power: 0, battery: 0 });
+
+  useEffect(() => {
+    latest.current = { power: live?.power || 0, battery: live?.battery || 0 };
+  }, [live?.power, live?.battery]);
+
+  useEffect(() => {
+    const push = () =>
+      setHistory((prev) =>
+        [
+          ...prev,
+          {
+            t: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+            power: latest.current.power,
+            battery: latest.current.battery
+          }
+        ].slice(-HISTORY_POINTS)
+      );
+
+    push();
+    const timer = setInterval(push, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
   const barData = {
     labels,
@@ -38,28 +67,30 @@ function EnergyChart({ liveData }) {
       {
         label: "Live Data",
         data: values,
-        backgroundColor: [
-          "#fbbf24",
-          "#22c55e",
-          "#3b82f6",
-          "#10b981",
-          "#f97316"
-        ],
+        backgroundColor: ["#fbbf24", "#22c55e", "#3b82f6", "#10b981", "#f97316"],
         borderRadius: 12
       }
     ]
   };
 
   const lineData = {
-    labels,
+    labels: history.map((h) => h.t),
     datasets: [
       {
-        label: "Performance Trend",
-        data: values,
+        label: "Power (W)",
+        data: history.map((h) => h.power),
         borderColor: "#10b981",
         backgroundColor: "rgba(16, 185, 129, 0.12)",
         tension: 0.45,
         fill: true
+      },
+      {
+        label: "Battery (%)",
+        data: history.map((h) => h.battery),
+        borderColor: "#f59e0b",
+        backgroundColor: "rgba(245, 158, 11, 0.10)",
+        tension: 0.45,
+        fill: false
       }
     ]
   };
@@ -97,12 +128,12 @@ function EnergyChart({ liveData }) {
   return (
     <div className="new-chart-grid">
       <div className="new-chart-card">
-        <h3>Energy Usage Overview</h3>
+        <h3>Live Panel Readings</h3>
         <Bar data={barData} options={options} />
       </div>
 
       <div className="new-chart-card">
-        <h3>Station Performance Trend</h3>
+        <h3>Power &amp; Battery Trend</h3>
         <Line data={lineData} options={options} />
       </div>
     </div>

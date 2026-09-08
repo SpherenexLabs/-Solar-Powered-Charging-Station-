@@ -1,4 +1,7 @@
 function LiveDataCard({ title, value, unit, icon }) {
+  /* Nothing published by the hardware yet → show a dash, never a fake 0 */
+  const missing = value === null || value === undefined || value === "";
+
   return (
     <div className="metric-card">
       <div className="metric-top">
@@ -7,8 +10,8 @@ function LiveDataCard({ title, value, unit, icon }) {
       </div>
 
       <h2>
-        {value ?? 0}
-        <small>{unit}</small>
+        {missing ? <span className="metric-empty">—</span> : value}
+        {!missing && unit && <small>{unit}</small>}
       </h2>
     </div>
   );

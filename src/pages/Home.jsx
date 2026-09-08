@@ -14,9 +14,10 @@ function Home() {
           </h1>
 
           <p>
-            A complete web-integrated solar charging station — book charging
-            slots, pick USB or AC charging, make dummy payments, and watch live
-            voltage, current, load, battery and energy data in real-time.
+            A complete web-integrated solar charging station — book one of four
+            AC slots or start a DC fast-charging session, pay by UPI, card, net
+            banking or wallet, and watch live voltage, current, power, battery
+            and temperature data in real time.
           </p>
 {/* 
           <div className="hero-buttons">
@@ -30,16 +31,16 @@ function Home() {
 
           <div className="mini-metrics">
             <div>
-              <strong>03</strong>
-              <span>Charging Stations</span>
+              <strong>04</strong>
+              <span>AC Charging Slots</span>
             </div>
             <div>
               <strong>Live</strong>
               <span>Energy Monitoring</span>
             </div>
             <div>
-              <strong>100%</strong>
-              <span>Firebase Backed</span>
+              <strong>24/7</strong>
+              <span>DC Fast Charging</span>
             </div>
           </div>
         </div>
@@ -62,10 +63,10 @@ function Home() {
       <section className="service-grid">
         <div className="service-card yellow">
           <div className="service-icon">👤</div>
-          <h3>User Booking</h3>
+          <h3>Slot Booking</h3>
           <p>
-            Select station, charging type, duration and time slot, then complete
-            a simulated payment in seconds.
+            Pick Slot 1 to Slot 4, choose the charging type, duration and start
+            time, then pay. The slot relay switches on for exactly that time.
           </p>
         </div>
 
@@ -82,17 +83,17 @@ function Home() {
           <div className="service-icon">🔋</div>
           <h3>Live Solar Data</h3>
           <p>
-            Real-time display of voltage, current, load, battery percentage and
-            cumulative energy generation.
+            Real-time display of the voltage, current, power, battery percentage
+            and temperature reported by the panel hardware.
           </p>
         </div>
 
         <div className="service-card orange">
           <div className="service-icon">💳</div>
-          <h3>Dummy Payment</h3>
+          <h3>Multiple Payment Modes</h3>
           <p>
-            Simulated payment gateway records every transaction with full
-            session details in Firebase.
+            Pay by UPI, card, net banking or wallet. Every transaction is
+            recorded with its full session details in Firebase.
           </p>
         </div>
       </section>
