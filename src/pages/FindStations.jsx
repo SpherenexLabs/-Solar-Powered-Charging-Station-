@@ -20,6 +20,28 @@ const RADIUS_OPTIONS = [
 
 const DEFAULT_RADIUS = 5000;
 const EMPTY_RESULT_RETRY_RADIUS = 25000;
+const CURRENT_LOCATION_STATION_ID = "current-location-charging-station";
+
+function currentLocationStation(pos) {
+  return {
+    id: CURRENT_LOCATION_STATION_ID,
+    name: "My Current Location Charging Station",
+    address: `Current GPS location (${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)})`,
+    location: { lat: pos.lat, lng: pos.lng },
+    distance: 0,
+    businessStatus: "OPERATIONAL",
+    openNow: true,
+    availability: { status: "available", label: "Available now" },
+    connectorCount: 5,
+    connectors: [
+      { type: "USB Type-C", count: 2 },
+      { type: "AC Socket (230V)", count: 2 },
+      { type: "DC Fast Charging", count: 1 },
+    ],
+    source: "current-location",
+    isCurrentLocationStation: true,
+  };
+}
 
 const TRAVEL_MODES = [
   { id: "DRIVING", label: "🚗 Drive", url: "driving" },
@@ -169,15 +191,28 @@ function FindStations() {
       map.setZoom(14);
 
       setPhase("searching");
-      let found = await findNearbyChargingStations(maps, pos, searchRadius);
+      let found = [];
+      try {
+        found = await findNearbyChargingStations(maps, pos, searchRadius);
 
-      // If a small local search is empty, show the nearest practical options
-      // instead of leaving the user with an empty map.
-      if (found.length === 0 && searchRadius < EMPTY_RESULT_RETRY_RADIUS) {
-        setRadius(EMPTY_RESULT_RETRY_RADIUS);
-        found = await findNearbyChargingStations(maps, pos, EMPTY_RESULT_RETRY_RADIUS);
+        // If a small local search is empty, show the nearest practical options
+        // instead of leaving the user with an empty map.
+        if (found.length === 0 && searchRadius < EMPTY_RESULT_RETRY_RADIUS) {
+          setRadius(EMPTY_RESULT_RETRY_RADIUS);
+          found = await findNearbyChargingStations(maps, pos, EMPTY_RESULT_RETRY_RADIUS);
+        }
+      } catch (stationError) {
+        // Keep the user's station visible if a public data provider is down.
+        console.warn("Nearby public stations could not be loaded:", stationError);
       }
-      setStations(found);
+
+      const ownStation = currentLocationStation(pos);
+      const overlapKm = Math.min(
+        0.1,
+        Math.max(0.025, (Number(pos.accuracy) || 0) / 1000)
+      );
+      const otherStations = found.filter((station) => station.distance > overlapKm);
+      setStations([ownStation, ...otherStations]);
       setPhase("done");
     } catch (err) {
       setError(err.message);
@@ -201,6 +236,7 @@ function FindStations() {
         map,
         position: s.location,
         title: s.name,
+        zIndex: s.isCurrentLocationStation ? 1000 : undefined,
         label: { text: String(i + 1), color: "#ffffff", fontWeight: "800", fontSize: "12px" },
         icon: {
           path: "M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z",

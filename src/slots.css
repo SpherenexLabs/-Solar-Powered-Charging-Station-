@@ -848,3 +848,66 @@
   color: var(--text-muted);
   font-weight: 700;
 }
+.current-station-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 18px 20px;
+  border: 1px solid rgba(16, 185, 129, 0.38);
+  border-radius: 16px;
+  background: rgba(6, 78, 59, 0.22);
+}
+
+.current-station-icon {
+  display: grid;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 50%;
+  color: #052e24;
+  background: #34d399;
+  font-size: 23px;
+}
+
+.current-station-card h3 {
+  margin: 3px 0;
+  color: var(--text);
+}
+
+.current-station-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.current-station-label {
+  color: #6ee7b7;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.current-station-status {
+  margin-left: auto;
+  padding: 7px 11px;
+  border-radius: 999px;
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.18);
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .current-station-card {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .current-station-status {
+    margin-left: 64px;
+  }
+}
+

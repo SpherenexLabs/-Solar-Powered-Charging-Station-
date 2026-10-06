@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ref, push, set, update } from "firebase/database";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
@@ -8,6 +8,7 @@ import PaymentGateway from "../components/PaymentGateway";
 import useSolarLive from "../hooks/useSolarLive";
 import useSlots from "../hooks/useSlots";
 import useDcSessions from "../hooks/useDcSessions";
+import { getCurrentPosition } from "../lib/googleMaps";
 import {
   AC_DURATIONS,
   AC_OPTIONS,
@@ -54,6 +55,21 @@ function UserPanel() {
   const [receiptView, setReceiptView] = useState(null);
   const [busy, setBusy] = useState(false);
   const [relayCommandBusy, setRelayCommandBusy] = useState(false);
+  const [stationLocation, setStationLocation] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCurrentPosition()
+      .then((position) => {
+        if (!cancelled) setStationLocation(position);
+      })
+      .catch((error) => {
+        console.warn("Current charging-station location is unavailable:", error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [form, setForm] = useState({
     name: currentUser?.name || "",
@@ -310,6 +326,20 @@ function UserPanel() {
             open at all times. Payment is required for both.
           </p>
         </div>
+      </div>
+
+      <div className="current-station-card">
+        <div className="current-station-icon">⚡</div>
+        <div>
+          <span className="current-station-label">Current charging station</span>
+          <h3>My Current Location Charging Station</h3>
+          <p>
+            {stationLocation
+              ? `${stationLocation.lat.toFixed(5)}, ${stationLocation.lng.toFixed(5)}`
+              : "Allow location access to display the station coordinates."}
+          </p>
+        </div>
+        <span className="current-station-status">Available now</span>
       </div>
 
       {/* ── Live panel readings ── */}
