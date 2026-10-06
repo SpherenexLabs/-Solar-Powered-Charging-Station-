@@ -113,7 +113,7 @@ function UserPanel() {
   const availableCount = slotList.filter((s) => s.status === "available").length;
 
   /* Sessions belonging to the signed-in user */
-  const mySlot = slotList.find((s) => s.userUid && s.userUid === currentUser?.uid);
+  const mySlots = slotList.filter((s) => s.userUid && s.userUid === currentUser?.uid);
   const myDc = sessions.filter(
     (s) => s.userUid === currentUser?.uid && s.status === "Charging" && s.endTime > now
   );
@@ -145,9 +145,9 @@ function UserPanel() {
     setForm((f) => ({
       ...f,
       chargingOption: option,
-      chargingOptions: f.chargingOptions.includes(option)
-        ? f.chargingOptions
-        : [...f.chargingOptions, option]
+      // One connector per checkout. A second connector requires another
+      // available slot and a separate successful payment.
+      chargingOptions: [option]
     }));
   }
 
@@ -385,24 +385,24 @@ function UserPanel() {
       </div>
 
       {/* ── My running session ── */}
-      {(mySlot || myDc.length > 0) && (
+      {(mySlots.length > 0 || myDc.length > 0) && (
         <div className="my-session">
           <h3>Your Active Charging</h3>
-          {mySlot && (
-            <div className="my-session-row">
+          {mySlots.map((slot) => (
+            <div className="my-session-row" key={slot.id}>
               <span className="ms-tag ac">AC</span>
-              <strong>{mySlot.name}</strong>
-              <span>{mySlot.chargingOption}</span>
+              <strong>{slot.name}</strong>
+              <span>{slot.chargingOption}</span>
               <span>
-                {fmtClock(mySlot.startTime)} – {fmtClock(mySlot.endTime)}
+                {fmtClock(slot.startTime)} – {fmtClock(slot.endTime)}
               </span>
               <span className="ms-time">
-                {mySlot.status === "reserved"
-                  ? `starts in ${fmtCountdown(mySlot.startTime - now)}`
-                  : `${fmtCountdown(mySlot.endTime - now)} left`}
+                {slot.status === "reserved"
+                  ? `starts in ${fmtCountdown(slot.startTime - now)}`
+                  : `${fmtCountdown(slot.endTime - now)} left`}
               </span>
             </div>
-          )}
+          ))}
           {myDc.map((s) => (
             <div className="my-session-row" key={s.key}>
               <span className="ms-tag dc">DC</span>
@@ -545,7 +545,7 @@ function UserPanel() {
           </div>
           {supply === "AC" && (
             <small className="custom-duration-note">
-              Select any required outputs together. Relays turn on only after successful payment.
+              One connector per payment. Book and pay another available slot for another output.
             </small>
           )}
 

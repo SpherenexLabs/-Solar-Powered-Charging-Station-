@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ref, onValue, set } from "firebase/database";
+import { ref, onValue, set, update } from "firebase/database";
 import { db } from "../firebase";
 import LiveDataCard from "../components/LiveDataCard";
 import EnergyChart from "../components/EnergyChart";
@@ -14,6 +14,7 @@ function AdminPanel() {
   const { slots, now, releaseSlot } = useSlots();
   const { sessions, activeSessions, endSession } = useDcSessions();
   const [transactions, setTransactions] = useState([]);
+  const [allOffBusy, setAllOffBusy] = useState(false);
 
   useEffect(() => {
     const off = onValue(ref(db, "Solar_Power_System/Transactions"), (snapshot) => {
@@ -44,6 +45,35 @@ function AdminPanel() {
   /* Manual relay override — useful for testing the hardware */
   const toggleRelay = async (relay, value) => {
     await set(ref(db, `Solar_Power_System/${relay}`), value);
+  };
+
+  const turnOffAllPanels = async () => {
+    const activeSlots = slotList.filter((slot) => slot.status !== "available");
+    const confirmed = window.confirm(
+      "Turn OFF Relays 1–4 and end every active or reserved AC session?"
+    );
+    if (!confirmed) return;
+
+    setAllOffBusy(true);
+    try {
+      const releases = await Promise.allSettled(
+        activeSlots.map((slot) => releaseSlot(slot.id, "Stopped by admin master OFF"))
+      );
+      await update(ref(db, "Solar_Power_System"), {
+        Relay1: 0,
+        Relay2: 0,
+        Relay3: 0,
+        Relay4: 0
+      });
+      if (releases.some((result) => result.status === "rejected")) {
+        throw new Error("One or more slot records could not be cleared.");
+      }
+    } catch (error) {
+      console.error("Could not turn off all charging panels:", error);
+      alert("Could not turn off every panel. Check Firebase and try again.");
+    } finally {
+      setAllOffBusy(false);
+    }
   };
 
   const downloadCSV = () => {
@@ -172,7 +202,20 @@ function AdminPanel() {
       <EnergyChart live={live} />
 
       {/* ── AC slots ── */}
-      <h2>AC Slot Monitoring (Relay 1 – Relay 4)</h2>
+      <div className="admin-panel-heading">
+        <div>
+          <h2>AC Slot Monitoring (Relay 1 – Relay 4)</h2>
+          <p>Paid sessions turn off automatically when their duration finishes.</p>
+        </div>
+        <button
+          type="button"
+          className="admin-all-off"
+          onClick={turnOffAllPanels}
+          disabled={allOffBusy}
+        >
+          {allOffBusy ? "Turning everything OFF…" : "Turn OFF All Panels"}
+        </button>
+      </div>
 
       <div className="station-grid">
         {slotList.map((slot) => {
