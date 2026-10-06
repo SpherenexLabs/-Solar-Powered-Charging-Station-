@@ -1,5 +1,27 @@
 # React + Vite
 
+## Deployment
+
+This project is ready for Vercel deployment. Do not commit the local `.env`
+file. Configure these variables in **Vercel → Project Settings → Environment
+Variables** instead:
+
+```text
+VITE_GOOGLE_MAPS_API_KEY=your-google-maps-key
+VITE_USE_GOOGLE_PLACES=false
+```
+
+Apply them to Production, Preview, and Development, then redeploy the project.
+For the Google Maps browser key, allow these website referrers:
+
+```text
+http://localhost:5173/*
+https://solar-powered-charging-station.vercel.app/*
+```
+
+The `vercel.json` rewrite keeps React Router URLs such as `/stations` working
+when opened or refreshed directly.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
