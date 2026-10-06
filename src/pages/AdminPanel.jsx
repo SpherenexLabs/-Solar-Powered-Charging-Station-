@@ -176,10 +176,10 @@ function AdminPanel() {
 
       <div className="station-grid">
         {slotList.map((slot) => {
-          const relayValue = relayValues[slot.relay];
-          const relayOn = relayIsOn(relayValue);
-          const relayText =
-            relayValue === null || relayValue === undefined ? "—" : String(relayValue);
+          const sessionRelays = Array.isArray(slot.relays) && slot.relays.length
+            ? slot.relays
+            : [slot.relay];
+          const relayOn = sessionRelays.some((relay) => relayIsOn(relayValues[relay]));
           const available = slot.status === "available";
 
           return (
@@ -194,7 +194,7 @@ function AdminPanel() {
                   <span className="slot-num">{slot.name.replace(/\D/g, "")}</span>
                   <div>
                     <h3>{slot.name}</h3>
-                    <p>AC Supply · {slot.relay}</p>
+                    <p>AC Supply · {sessionRelays.join(" + ")}</p>
                   </div>
                 </div>
                 <span className="status-pill">
@@ -202,12 +202,23 @@ function AdminPanel() {
                 </span>
               </div>
 
-              <div className="slot-relay">
-                <span className={`relay-led ${relayOn ? "on" : "off"}`} />
-                <span className="relay-text">
-                  {slot.relay} = <strong>{relayText}</strong>
-                </span>
-                <span className="relay-state">{relayOn ? "Power ON" : "Power OFF"}</span>
+              <div className="slot-relay-list">
+                {sessionRelays.map((relay) => {
+                  const relayValue = relayValues[relay];
+                  const isOn = relayIsOn(relayValue);
+                  const relayText = relayValue === null || relayValue === undefined
+                    ? "—"
+                    : String(relayValue);
+                  return (
+                    <div className="slot-relay" key={relay}>
+                      <span className={`relay-led ${isOn ? "on" : "off"}`} />
+                      <span className="relay-text">
+                        {relay} = <strong>{relayText}</strong>
+                      </span>
+                      <span className="relay-state">{isOn ? "Power ON" : "Power OFF"}</span>
+                    </div>
+                  );
+                })}
               </div>
 
               <div className="station-body">

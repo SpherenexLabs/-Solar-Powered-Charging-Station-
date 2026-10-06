@@ -915,3 +915,8 @@
   }
 }
 
+.slot-relay-list {
+  display: grid;
+  gap: 8px;
+}
+

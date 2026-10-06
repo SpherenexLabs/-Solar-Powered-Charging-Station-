@@ -75,6 +75,7 @@ function UserPanel() {
     name: currentUser?.name || "",
     phone: "",
     chargingOption: AC_OPTIONS[0],
+    chargingOptions: [],
     acRelay: "Relay2",
     duration: AC_DURATIONS[0].label,
     customMinutes: AC_DURATIONS[0].minutes,
@@ -92,6 +93,15 @@ function UserPanel() {
   const amount = usingCustomDuration
     ? priceForCustomMinutes(durations, durationMinutes)
     : tariff.amount;
+  const selectedChargingOptions =
+    supply === "AC" ? form.chargingOptions : [form.chargingOption];
+  const selectedRelays = supply === "AC"
+    ? [...new Set(
+        form.chargingOptions.flatMap((option) =>
+          relaysForChargingOption(option, form.acRelay)
+        )
+      )]
+    : [];
 
   const slotList = useMemo(() => Object.values(slots), [slots]);
   const relayValues = {
@@ -116,6 +126,7 @@ function UserPanel() {
     setForm((f) => ({
       ...f,
       chargingOption: next === "AC" ? AC_OPTIONS[0] : DC_OPTIONS[0],
+      chargingOptions: [],
       duration: next === "AC" ? AC_DURATIONS[0].label : DC_DURATIONS[0].label,
       customMinutes: next === "AC" ? AC_DURATIONS[0].minutes : DC_DURATIONS[0].minutes
     }));
@@ -127,9 +138,18 @@ function UserPanel() {
   }
 
   async function selectChargingOption(option) {
-    setForm((f) => ({ ...f, chargingOption: option }));
+    if (supply !== "AC") {
+      setForm((f) => ({ ...f, chargingOption: option }));
+      return;
+    }
 
-    if (supply !== "AC") return;
+    setForm((f) => ({
+      ...f,
+      chargingOption: option,
+      chargingOptions: f.chargingOptions.includes(option)
+        ? f.chargingOptions
+        : [...f.chargingOptions, option]
+    }));
 
     setRelayCommandBusy(true);
     try {
@@ -151,7 +171,7 @@ function UserPanel() {
 
   async function selectAcRelay(acRelay) {
     setForm((f) => ({ ...f, acRelay }));
-    if (supply !== "AC" || form.chargingOption !== "AC Socket (230V)") return;
+    if (supply !== "AC" || !form.chargingOptions.includes("AC Socket (230V)")) return;
 
     setRelayCommandBusy(true);
     try {
@@ -183,6 +203,10 @@ function UserPanel() {
 
     if (supply === "AC" && !selectedSlot) {
       alert("Please select one available slot (Slot 1 to Slot 4).");
+      return;
+    }
+    if (supply === "AC" && selectedChargingOptions.length === 0) {
+      alert("Please select at least one charging connector.");
       return;
     }
     if (!form.name.trim() || !/^\d{10}$/.test(form.phone.trim())) {
@@ -226,8 +250,10 @@ function UserPanel() {
       email: currentUser?.email || "",
       phone: form.phone.trim(),
       supply,
-      chargingOption: form.chargingOption,
-      acRelay: form.chargingOption === "AC Socket (230V)" ? form.acRelay : "",
+      chargingOption: supply === "AC" ? selectedChargingOptions.join(" + ") : form.chargingOption,
+      chargingOptions: supply === "AC" ? selectedChargingOptions : [form.chargingOption],
+      acRelay: form.chargingOptions.includes("AC Socket (230V)") ? form.acRelay : "",
+      relays: selectedRelays,
       duration: durationLabel,
       durationMinutes,
       startTime,
@@ -251,7 +277,7 @@ function UserPanel() {
     try {
       if (supply === "AC") {
         const cfg = slotConfig(selectedSlot);
-        const relays = relaysForChargingOption(base.chargingOption, base.acRelay);
+        const relays = base.relays;
 
         /* 1. transaction record */
         const txnNode = push(ref(db, "Solar_Power_System/Transactions"));
@@ -272,6 +298,8 @@ function UserPanel() {
           phone: base.phone,
           supply: "AC",
           chargingOption: base.chargingOption,
+          chargingOptions: base.chargingOptions,
+          acRelay: base.acRelay,
           relays,
           duration: base.duration,
           durationMinutes: base.durationMinutes,
@@ -319,7 +347,13 @@ function UserPanel() {
 
       setShowPayment(false);
       setSelectedSlot("");
-      setForm((f) => ({ ...f, phone: "", timeSlot: "", startNow: true }));
+      setForm((f) => ({
+        ...f,
+        phone: "",
+        chargingOptions: [],
+        timeSlot: "",
+        startNow: true
+      }));
     } catch (err) {
       alert(err.message || "Could not complete the booking.");
       setShowPayment(false);
@@ -331,11 +365,14 @@ function UserPanel() {
   const paySummary = [
     { label: "Supply", value: supply === "AC" ? "AC Charging" : "DC Fast Charging" },
     { label: supply === "AC" ? "Slot" : "Port", value: supply === "AC" ? slotConfig(selectedSlot)?.name || "—" : "DC Port" },
-    { label: "Charging Type", value: form.chargingOption },
+    {
+      label: "Charging Type",
+      value: supply === "AC" ? selectedChargingOptions.join(" + ") || "—" : form.chargingOption
+    },
     ...(supply === "AC"
       ? [{
           label: "Relay Output",
-          value: relaysForChargingOption(form.chargingOption, form.acRelay).join(" + ")
+          value: selectedRelays.join(" + ") || "—"
         }]
       : []),
     { label: "Duration", value: durationLabel },
@@ -440,7 +477,7 @@ function UserPanel() {
               <SlotCard
                 key={slot.id}
                 slot={slot}
-                relayValue={relayValues[slot.relay]}
+                relayValues={relayValues}
                 now={now}
                 selected={selectedSlot === slot.id}
                 mine={slot.userUid === currentUser?.uid}
@@ -515,8 +552,16 @@ function UserPanel() {
               <button
                 key={o}
                 type="button"
-                className={form.chargingOption === o ? "active" : ""}
-                aria-pressed={form.chargingOption === o}
+                className={
+                  supply === "AC"
+                    ? form.chargingOptions.includes(o) ? "active" : ""
+                    : form.chargingOption === o ? "active" : ""
+                }
+                aria-pressed={
+                  supply === "AC"
+                    ? form.chargingOptions.includes(o)
+                    : form.chargingOption === o
+                }
                 disabled={relayCommandBusy}
                 onClick={() => selectChargingOption(o)}
               >
@@ -532,8 +577,13 @@ function UserPanel() {
               </button>
             ))}
           </div>
+          {supply === "AC" && (
+            <small className="custom-duration-note">
+              You can select Type-C, one AC output, and Multi Pin together.
+            </small>
+          )}
 
-          {supply === "AC" && form.chargingOption === "AC Socket (230V)" && (
+          {supply === "AC" && form.chargingOptions.includes("AC Socket (230V)") && (
             <>
               <label>Select AC Output</label>
               <div className="charging-option-buttons ac-relay-buttons">

@@ -5,7 +5,7 @@ import { relayIsOn } from "../hooks/useSolarLive";
    Shows Available / Reserved / Occupied, the live relay state and the
    remaining time of the paid session. */
 
-function SlotCard({ slot, relayValue, now, selected, onSelect, mine }) {
+function SlotCard({ slot, relayValues, now, selected, onSelect, mine }) {
   const status = slot?.status || "available";
   const isAvailable = status === "available";
   const isReserved = status === "reserved";
@@ -18,9 +18,9 @@ function SlotCard({ slot, relayValue, now, selected, onSelect, mine }) {
 
   const statusText = isAvailable ? "Available" : isReserved ? "Reserved" : "Occupied";
 
-  /* Relay value is shown exactly as the board published it */
-  const relayOn = relayIsOn(relayValue);
-  const relayText = relayValue === null || relayValue === undefined ? "—" : String(relayValue);
+  const sessionRelays = Array.isArray(slot?.relays) && slot.relays.length
+    ? slot.relays
+    : [slot?.relay].filter(Boolean);
 
   return (
     <div
@@ -33,19 +33,30 @@ function SlotCard({ slot, relayValue, now, selected, onSelect, mine }) {
           <span className="slot-num">{slot?.name?.replace(/\D/g, "") || "-"}</span>
           <div>
             <h3>{slot?.name}</h3>
-            <p>AC Supply · {slot?.relay}</p>
+            <p>AC Supply · {sessionRelays.join(" + ")}</p>
           </div>
         </div>
 
         <span className="status-pill">{statusText}</span>
       </div>
 
-      <div className="slot-relay">
-        <span className={`relay-led ${relayOn ? "on" : "off"}`} />
-        <span className="relay-text">
-          {slot?.relay} = <strong>{relayText}</strong>
-        </span>
-        <span className="relay-state">{relayOn ? "Power ON" : "Power OFF"}</span>
+      <div className="slot-relay-list">
+        {sessionRelays.map((relay) => {
+          const relayValue = relayValues[relay];
+          const relayOn = relayIsOn(relayValue);
+          const relayText = relayValue === null || relayValue === undefined
+            ? "—"
+            : String(relayValue);
+          return (
+            <div className="slot-relay" key={relay}>
+              <span className={`relay-led ${relayOn ? "on" : "off"}`} />
+              <span className="relay-text">
+                {relay} = <strong>{relayText}</strong>
+              </span>
+              <span className="relay-state">{relayOn ? "Power ON" : "Power OFF"}</span>
+            </div>
+          );
+        })}
       </div>
 
       {isAvailable ? (
