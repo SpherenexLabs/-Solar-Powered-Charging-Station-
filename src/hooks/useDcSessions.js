@@ -11,9 +11,9 @@ import useNow from "./useNow";
    mandatory before a session is created.
 
    Firebase:
-     Solar/DC/Active    → 1 while at least one paid DC session is running
-     Solar/DC/Status    → "Charging" / "Idle"
-     Solar/DC/Sessions  → the individual paid sessions
+     Solar_Power_System/DC/Active    → 1 while at least one paid DC session is running
+     Solar_Power_System/DC/Status    → "Charging" / "Idle"
+     Solar_Power_System/DC/Sessions  → the individual paid sessions
 ══════════════════════════════════════════════════════════════ */
 
 export default function useDcSessions() {
@@ -24,7 +24,7 @@ export default function useDcSessions() {
   const lastActive = useRef(null);
 
   useEffect(() => {
-    const off = onValue(ref(db, "Solar/DC/Sessions"), (snap) => {
+    const off = onValue(ref(db, "Solar_Power_System/DC/Sessions"), (snap) => {
       const val = snap.val() || {};
       const list = Object.keys(val).map((key) => ({ key, ...val[key] }));
       listRef.current = list;
@@ -37,10 +37,10 @@ export default function useDcSessions() {
   const endSession = useCallback(async (key) => {
     const session = listRef.current.find((s) => s.key === key);
 
-    await update(ref(db, `Solar/DC/Sessions/${key}`), { status: "Completed" });
+    await update(ref(db, `Solar_Power_System/DC/Sessions/${key}`), { status: "Completed" });
 
     if (session?.txnKey) {
-      await update(ref(db, `Solar/Transactions/${session.txnKey}`), {
+      await update(ref(db, `Solar_Power_System/Transactions/${session.txnKey}`), {
         sessionStatus: "Completed",
         releasedAt: new Date().toISOString()
       });
@@ -70,8 +70,8 @@ export default function useDcSessions() {
 
       if (lastActive.current !== flag) {
         lastActive.current = flag;
-        set(ref(db, "Solar/DC/Active"), flag);
-        set(ref(db, "Solar/DC/Status"), running ? "Charging" : "Idle");
+        set(ref(db, "Solar_Power_System/DC/Active"), flag);
+        set(ref(db, "Solar_Power_System/DC/Status"), running ? "Charging" : "Idle");
       }
     }, 1000);
 
@@ -80,12 +80,12 @@ export default function useDcSessions() {
 
   /* Start a DC session after a successful payment */
   const startSession = useCallback(async (booking) => {
-    const node = push(ref(db, "Solar/DC/Sessions"));
+    const node = push(ref(db, "Solar_Power_System/DC/Sessions"));
     const payload = { ...booking, supply: "DC", status: "Charging" };
 
     await set(node, payload);
-    await set(ref(db, "Solar/DC/Active"), 1);
-    await set(ref(db, "Solar/DC/Status"), "Charging");
+    await set(ref(db, "Solar_Power_System/DC/Active"), 1);
+    await set(ref(db, "Solar_Power_System/DC/Status"), "Charging");
     lastActive.current = 1;
 
     return { key: node.key, ...payload };

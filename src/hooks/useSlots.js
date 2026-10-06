@@ -59,7 +59,7 @@ export default function useSlots() {
 
   /* ── Live subscription + first-run seeding ── */
   useEffect(() => {
-    const off = onValue(ref(db, "Solar/Slots"), (snap) => {
+    const off = onValue(ref(db, "Solar_Power_System/Slots"), (snap) => {
       const val = snap.val() || {};
       const merged = {};
 
@@ -74,7 +74,7 @@ export default function useSlots() {
       if (!seeded.current) {
         seeded.current = true;
         AC_SLOTS.forEach((cfg) => {
-          if (!val[cfg.id]) set(ref(db, `Solar/Slots/${cfg.id}`), blankSlot(cfg));
+          if (!val[cfg.id]) set(ref(db, `Solar_Power_System/Slots/${cfg.id}`), blankSlot(cfg));
         });
       }
     });
@@ -89,11 +89,11 @@ export default function useSlots() {
 
     const current = slotsRef.current[slotId];
 
-    await set(ref(db, `Solar/${cfg.relay}`), 0);
-    await set(ref(db, `Solar/Slots/${slotId}`), resetPayload(cfg));
+    await set(ref(db, `Solar_Power_System/${cfg.relay}`), 0);
+    await set(ref(db, `Solar_Power_System/Slots/${slotId}`), resetPayload(cfg));
 
     if (current?.txnKey) {
-      await update(ref(db, `Solar/Transactions/${current.txnKey}`), {
+      await update(ref(db, `Solar_Power_System/Transactions/${current.txnKey}`), {
         sessionStatus: reason,
         relayState: 0,
         releasedAt: new Date().toISOString()
@@ -108,11 +108,11 @@ export default function useSlots() {
 
     const current = slotsRef.current[slotId];
 
-    await set(ref(db, `Solar/${cfg.relay}`), 1);
-    await update(ref(db, `Solar/Slots/${slotId}`), { status: "occupied" });
+    await set(ref(db, `Solar_Power_System/${cfg.relay}`), 1);
+    await update(ref(db, `Solar_Power_System/Slots/${slotId}`), { status: "occupied" });
 
     if (current?.txnKey) {
-      await update(ref(db, `Solar/Transactions/${current.txnKey}`), {
+      await update(ref(db, `Solar_Power_System/Transactions/${current.txnKey}`), {
         sessionStatus: "Charging",
         relayState: 1
       });
@@ -166,9 +166,9 @@ export default function useSlots() {
       status: startsNow ? "occupied" : "reserved"
     };
 
-    await set(ref(db, `Solar/Slots/${slotId}`), payload);
+    await set(ref(db, `Solar_Power_System/Slots/${slotId}`), payload);
     /* Relay goes HIGH the moment the session actually starts */
-    await set(ref(db, `Solar/${cfg.relay}`), startsNow ? 1 : 0);
+    await set(ref(db, `Solar_Power_System/${cfg.relay}`), startsNow ? 1 : 0);
 
     return payload;
   }, []);

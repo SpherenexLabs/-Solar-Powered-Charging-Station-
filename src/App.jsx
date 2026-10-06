@@ -5,6 +5,7 @@ import Home from "./pages/Home";
 import UserPanel from "./pages/UserPanel";
 import AdminPanel from "./pages/AdminPanel";
 import Login from "./pages/Login";
+import FindStations from "./pages/FindStations";
 
 function AppRoutes() {
   const { currentUser, isAdmin } = useAuth();
@@ -19,6 +20,9 @@ function AppRoutes() {
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
+
+        {/* Nearby charging stations — available to everyone */}
+        <Route path="/stations" element={<FindStations />} />
 
         {/* User panel — only for regular users */}
         <Route

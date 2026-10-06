@@ -159,7 +159,7 @@ function UserPanel() {
         const cfg = slotConfig(selectedSlot);
 
         /* 1. transaction record */
-        const txnNode = push(ref(db, "Solar/Transactions"));
+        const txnNode = push(ref(db, "Solar_Power_System/Transactions"));
         await set(txnNode, {
           ...base,
           slot: selectedSlot,
@@ -192,7 +192,7 @@ function UserPanel() {
         setReceiptView({ ...base, slotName: cfg.name, relay: cfg.relay });
       } else {
         /* DC — always available, no slot is blocked */
-        const txnNode = push(ref(db, "Solar/Transactions"));
+        const txnNode = push(ref(db, "Solar_Power_System/Transactions"));
         await set(txnNode, {
           ...base,
           slot: "DC Port",

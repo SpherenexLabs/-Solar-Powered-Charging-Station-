@@ -18,7 +18,7 @@ function genUid() {
 /* Find a user document by email — loads all users and filters client-side
    (avoids needing a Firebase .indexOn rule) */
 async function findUserByEmail(email) {
-  const snapshot = await get(ref(db, "Solar/Users"));
+  const snapshot = await get(ref(db, "Solar_Power_System/Users"));
   if (!snapshot.exists()) return null;
   let found = null;
   snapshot.forEach((child) => {
@@ -39,7 +39,7 @@ export function AuthProvider({ children }) {
     const uid = localStorage.getItem(SESSION_KEY);
     if (!uid) { setLoading(false); return; }
 
-    get(ref(db, `Solar/Users/${uid}`))
+    get(ref(db, `Solar_Power_System/Users/${uid}`))
       .then((snap) => {
         if (snap.exists()) setCurrentUser({ uid, ...snap.val() });
         else               localStorage.removeItem(SESSION_KEY);
@@ -56,7 +56,7 @@ export function AuthProvider({ children }) {
 
   /* ════════════════════════════════════════
      LOGIN
-     Stores & checks credentials in Solar/Users
+     Stores & checks credentials in Solar_Power_System/Users
   ════════════════════════════════════════ */
   const login = async (email, password) => {
     const normEmail = email.trim().toLowerCase();
@@ -72,7 +72,7 @@ export function AuthProvider({ children }) {
         displayName: "Admin",
         createdAt: new Date().toISOString()
       };
-      await set(ref(db, `Solar/Users/${uid}`), adminDoc);
+      await set(ref(db, `Solar_Power_System/Users/${uid}`), adminDoc);
       startSession({ uid, ...adminDoc });
       return;
     }
@@ -89,7 +89,7 @@ export function AuthProvider({ children }) {
 
   /* ════════════════════════════════════════
      REGISTER
-     Saves new user to Solar/Users
+     Saves new user to Solar_Power_System/Users
   ════════════════════════════════════════ */
   const register = async (name, email, password) => {
     const normEmail = email.trim().toLowerCase();
@@ -109,7 +109,7 @@ export function AuthProvider({ children }) {
       role: "user", displayName: name,
       createdAt: new Date().toISOString()
     };
-    await set(ref(db, `Solar/Users/${uid}`), userDoc);
+    await set(ref(db, `Solar_Power_System/Users/${uid}`), userDoc);
     startSession({ uid, ...userDoc });
   };
 

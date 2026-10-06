@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import SolarAnimation from "../components/SolarAnimation";
 
 function Home() {
@@ -28,6 +29,12 @@ function Home() {
               📊 Admin Dashboard
             </a>
           </div> */}
+
+          <div className="hero-buttons">
+            <Link to="/stations" className="btn-main">
+              📍 Find Charging Station
+            </Link>
+          </div>
 
           <div className="mini-metrics">
             <div>

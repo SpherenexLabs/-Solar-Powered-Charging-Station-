@@ -20,6 +20,7 @@ function Navbar() {
 
       <nav className="menu">
         <NavLink to="/">Home</NavLink>
+        <NavLink to="/stations">Find Stations</NavLink>
 
         {/* Admin sees only Admin Panel, regular user sees only User Panel */}
         {admin

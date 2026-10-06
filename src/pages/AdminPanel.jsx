@@ -16,7 +16,7 @@ function AdminPanel() {
   const [transactions, setTransactions] = useState([]);
 
   useEffect(() => {
-    const off = onValue(ref(db, "Solar/Transactions"), (snapshot) => {
+    const off = onValue(ref(db, "Solar_Power_System/Transactions"), (snapshot) => {
       if (!snapshot.exists()) {
         setTransactions([]);
         return;
@@ -43,7 +43,7 @@ function AdminPanel() {
 
   /* Manual relay override — useful for testing the hardware */
   const toggleRelay = async (relay, value) => {
-    await set(ref(db, `Solar/${relay}`), value);
+    await set(ref(db, `Solar_Power_System/${relay}`), value);
   };
 
   const downloadCSV = () => {

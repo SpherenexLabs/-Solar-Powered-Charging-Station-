@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { ref, onValue } from "firebase/database";
 import { db } from "../firebase";
 
-/* Live values published by the hardware as flat children of Solar/:
-     Solar/Voltage, Solar/Current, Solar/Power, Solar/Battery, Solar/Temperature,
-     Solar/Relay1..4
+/* Live values published by the hardware as flat children of Solar_Power_System/:
+     Solar_Power_System/Voltage, Solar_Power_System/Current, Solar_Power_System/Power, Solar_Power_System/Battery, Solar_Power_System/Temperature,
+     Solar_Power_System/Relay1..4
 
    Nothing here is invented or derived — a key the board has not published
    stays null so the dashboard can show "—" instead of a fake 0.
@@ -38,7 +38,7 @@ export default function useSolarLive() {
 
     Object.entries(NUMERIC).forEach(([key, field]) => {
       unsubs.push(
-        onValue(ref(db, `Solar/${key}`), (snap) => {
+        onValue(ref(db, `Solar_Power_System/${key}`), (snap) => {
           const raw = snap.val();
           const num = Number(raw);
           const value = raw === null || raw === "" || !Number.isFinite(num) ? null : num;
@@ -49,7 +49,7 @@ export default function useSolarLive() {
 
     Object.entries(RAW).forEach(([key, field]) => {
       unsubs.push(
-        onValue(ref(db, `Solar/${key}`), (snap) => {
+        onValue(ref(db, `Solar_Power_System/${key}`), (snap) => {
           setLive((prev) => ({ ...prev, [field]: snap.val() }));
         })
       );
