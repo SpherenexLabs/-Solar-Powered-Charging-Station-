@@ -132,7 +132,6 @@ export default function Login() {
             <span className="hint-icon">🔐</span>
             <div>
               <strong>Admin Access</strong>
-              <p>admin@gmail.com &nbsp;/&nbsp; admin@123</p>
             </div>
           </div>
         )}
