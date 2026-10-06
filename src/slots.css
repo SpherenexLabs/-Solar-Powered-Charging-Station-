@@ -402,6 +402,10 @@
   gap: 8px;
 }
 
+.charging-option-buttons.ac-relay-buttons {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .form-box .charging-option-buttons button {
   width: auto;
   min-height: 46px;

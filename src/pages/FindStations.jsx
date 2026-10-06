@@ -34,8 +34,9 @@ function currentLocationStation(pos) {
     availability: { status: "available", label: "Available now" },
     connectorCount: 5,
     connectors: [
-      { type: "USB Type-C", count: 2 },
+      { type: "USB Type-C", count: 1 },
       { type: "AC Socket (230V)", count: 2 },
+      { type: "USB Multi Pin", count: 1 },
       { type: "DC Fast Charging", count: 1 },
     ],
     source: "current-location",

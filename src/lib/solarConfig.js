@@ -1,8 +1,8 @@
 /* ══════════════════════════════════════════════════════════════
    Central configuration for the Solar Charging Station.
 
-   AC  →  4 physical slots, each wired to one relay (Relay1..Relay4).
-          Only one user can hold a slot at a time.
+   AC  →  4 booking slots controlling connector-specific relay outputs.
+          Type-C uses Relay1, AC uses user-selected Relay2 or Relay3, and Multi Pin uses Relay4.
    DC  →  Always available (no slot limit), but payment is still
           required before a DC session starts.
 ══════════════════════════════════════════════════════════════ */
@@ -42,13 +42,16 @@ export const DC_OPTIONS = ["DC Fast (CCS-2)", "DC Fast (CHAdeMO)", "DC 12V Outpu
 
 /* Physical output groups selected by the user's charging connector. */
 export const AC_OPTION_RELAYS = {
-  "USB Type-C": ["Relay1", "Relay4"],
-  "USB Multi Pin": ["Relay1", "Relay4"],
+  "USB Type-C": ["Relay1"],
+  "USB Multi Pin": ["Relay4"],
   "AC Socket (230V)": ["Relay2", "Relay3"]
 };
 
-export function relaysForChargingOption(option, fallbackRelay) {
-  return AC_OPTION_RELAYS[option] || (fallbackRelay ? [fallbackRelay] : []);
+export function relaysForChargingOption(option, selectedAcRelay = "Relay2") {
+  if (option === "AC Socket (230V)") {
+    return [selectedAcRelay === "Relay3" ? "Relay3" : "Relay2"];
+  }
+  return AC_OPTION_RELAYS[option] || [];
 }
 
 export function findDuration(list, label) {

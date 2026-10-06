@@ -75,6 +75,7 @@ function UserPanel() {
     name: currentUser?.name || "",
     phone: "",
     chargingOption: AC_OPTIONS[0],
+    acRelay: "Relay2",
     duration: AC_DURATIONS[0].label,
     customMinutes: AC_DURATIONS[0].minutes,
     startNow: true,
@@ -126,21 +127,44 @@ function UserPanel() {
   }
 
   async function selectChargingOption(option) {
+    const previousRelays = relaysForChargingOption(form.chargingOption, form.acRelay);
     setForm((f) => ({ ...f, chargingOption: option }));
 
     if (supply !== "AC") return;
 
     setRelayCommandBusy(true);
     try {
-      // A single atomic write switches the selected physical output pair together.
-      const relays = relaysForChargingOption(option);
+      // Switch the previous connector off and the selected connector on together.
+      const relays = relaysForChargingOption(option, form.acRelay);
+      const relayUpdates = Object.fromEntries([
+        ...previousRelays.map((relay) => [relay, 0]),
+        ...relays.map((relay) => [relay, 1])
+      ]);
       await update(
         ref(db, "Solar_Power_System"),
-        Object.fromEntries(relays.map((relay) => [relay, 1]))
+        relayUpdates
       );
     } catch (error) {
       console.error("Could not switch on charging relays:", error);
       alert("Could not turn on the selected charging outputs. Please try again.");
+    } finally {
+      setRelayCommandBusy(false);
+    }
+  }
+
+  async function selectAcRelay(acRelay) {
+    setForm((f) => ({ ...f, acRelay }));
+    if (supply !== "AC" || form.chargingOption !== "AC Socket (230V)") return;
+
+    setRelayCommandBusy(true);
+    try {
+      await update(ref(db, "Solar_Power_System"), {
+        Relay2: acRelay === "Relay2" ? 1 : 0,
+        Relay3: acRelay === "Relay3" ? 1 : 0
+      });
+    } catch (error) {
+      console.error("Could not switch the selected AC relay:", error);
+      alert("Could not turn on the selected AC relay. Please try again.");
     } finally {
       setRelayCommandBusy(false);
     }
@@ -207,6 +231,7 @@ function UserPanel() {
       phone: form.phone.trim(),
       supply,
       chargingOption: form.chargingOption,
+      acRelay: form.chargingOption === "AC Socket (230V)" ? form.acRelay : "",
       duration: durationLabel,
       durationMinutes,
       startTime,
@@ -230,7 +255,7 @@ function UserPanel() {
     try {
       if (supply === "AC") {
         const cfg = slotConfig(selectedSlot);
-        const relays = relaysForChargingOption(base.chargingOption, cfg.relay);
+        const relays = relaysForChargingOption(base.chargingOption, base.acRelay);
 
         /* 1. transaction record */
         const txnNode = push(ref(db, "Solar_Power_System/Transactions"));
@@ -311,6 +336,12 @@ function UserPanel() {
     { label: "Supply", value: supply === "AC" ? "AC Charging" : "DC Fast Charging" },
     { label: supply === "AC" ? "Slot" : "Port", value: supply === "AC" ? slotConfig(selectedSlot)?.name || "—" : "DC Port" },
     { label: "Charging Type", value: form.chargingOption },
+    ...(supply === "AC"
+      ? [{
+          label: "Relay Output",
+          value: relaysForChargingOption(form.chargingOption, form.acRelay).join(" + ")
+        }]
+      : []),
     { label: "Duration", value: durationLabel },
     { label: "Starts", value: form.startNow ? "Immediately" : form.timeSlot }
   ];
@@ -322,8 +353,8 @@ function UserPanel() {
           <span className="section-label">User Dashboard</span>
           <h1>Book a Solar Charging Slot</h1>
           <p>
-            Four AC slots (Slot 1 – Slot 4) run on Relay 1 – Relay 4. DC fast charging is
-            open at all times. Payment is required for both.
+            Type-C uses Relay 1, AC uses either Relay 2 or Relay 3 selected by the user,
+            and Multi Pin uses Relay 4. DC fast charging is open at all times.
           </p>
         </div>
       </div>
@@ -496,13 +527,35 @@ function UserPanel() {
                 {relayCommandBusy && form.chargingOption === o
                   ? "Turning on outputs…"
                   : supply === "AC"
-                    ? `${o} · ${relaysForChargingOption(o)
-                        .map((relay) => relay.replace("Relay", "R"))
-                        .join(" + ")}`
+                    ? o === "AC Socket (230V)"
+                      ? `${o} · Choose R2 or R3`
+                      : `${o} · ${relaysForChargingOption(o)
+                          .map((relay) => relay.replace("Relay", "R"))
+                          .join(" + ")}`
                     : o}
               </button>
             ))}
           </div>
+
+          {supply === "AC" && form.chargingOption === "AC Socket (230V)" && (
+            <>
+              <label>Select AC Output</label>
+              <div className="charging-option-buttons ac-relay-buttons">
+                {["Relay2", "Relay3"].map((relay) => (
+                  <button
+                    key={relay}
+                    type="button"
+                    className={form.acRelay === relay ? "active" : ""}
+                    aria-pressed={form.acRelay === relay}
+                    disabled={relayCommandBusy}
+                    onClick={() => selectAcRelay(relay)}
+                  >
+                    {relay.replace("Relay", "Relay ")}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           <label>Charging Duration</label>
           <select name="duration" value={form.duration} onChange={handleChange}>
