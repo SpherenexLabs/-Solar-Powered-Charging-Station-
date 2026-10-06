@@ -127,19 +127,16 @@ function UserPanel() {
   }
 
   async function selectChargingOption(option) {
-    const previousRelays = relaysForChargingOption(form.chargingOption, form.acRelay);
     setForm((f) => ({ ...f, chargingOption: option }));
 
     if (supply !== "AC") return;
 
     setRelayCommandBusy(true);
     try {
-      // Switch the previous connector off and the selected connector on together.
+      // Only energize this user's selected output. Never switch other outputs
+      // off here because another user may already be charging on them.
       const relays = relaysForChargingOption(option, form.acRelay);
-      const relayUpdates = Object.fromEntries([
-        ...previousRelays.map((relay) => [relay, 0]),
-        ...relays.map((relay) => [relay, 1])
-      ]);
+      const relayUpdates = Object.fromEntries(relays.map((relay) => [relay, 1]));
       await update(
         ref(db, "Solar_Power_System"),
         relayUpdates
@@ -158,10 +155,9 @@ function UserPanel() {
 
     setRelayCommandBusy(true);
     try {
-      await update(ref(db, "Solar_Power_System"), {
-        Relay2: acRelay === "Relay2" ? 1 : 0,
-        Relay3: acRelay === "Relay3" ? 1 : 0
-      });
+      // Turn on only the selected AC output. The other AC relay can belong to
+      // another active user and must remain unchanged.
+      await update(ref(db, "Solar_Power_System"), { [acRelay]: 1 });
     } catch (error) {
       console.error("Could not switch the selected AC relay:", error);
       alert("Could not turn on the selected AC relay. Please try again.");
