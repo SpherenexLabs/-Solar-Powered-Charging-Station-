@@ -40,6 +40,17 @@ export const DC_DURATIONS = [
 export const AC_OPTIONS = ["USB Type-C", "USB Multi Pin", "AC Socket (230V)"];
 export const DC_OPTIONS = ["DC Fast (CCS-2)", "DC Fast (CHAdeMO)", "DC 12V Output"];
 
+/* Physical output groups selected by the user's charging connector. */
+export const AC_OPTION_RELAYS = {
+  "USB Type-C": ["Relay1", "Relay4"],
+  "USB Multi Pin": ["Relay1", "Relay4"],
+  "AC Socket (230V)": ["Relay2", "Relay3"]
+};
+
+export function relaysForChargingOption(option, fallbackRelay) {
+  return AC_OPTION_RELAYS[option] || (fallbackRelay ? [fallbackRelay] : []);
+}
+
 export function findDuration(list, label) {
   return list.find((d) => d.label === label) || list[0];
 }

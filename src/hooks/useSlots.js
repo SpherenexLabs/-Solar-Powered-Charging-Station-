@@ -50,6 +50,17 @@ function resetPayload(cfg) {
   return blankSlot(cfg);
 }
 
+function sessionRelays(slot, cfg) {
+  return Array.isArray(slot?.relays) && slot.relays.length ? slot.relays : [cfg.relay];
+}
+
+function writeRelays(relays, value) {
+  return update(
+    ref(db, "Solar_Power_System"),
+    Object.fromEntries(relays.map((relay) => [relay, value]))
+  );
+}
+
 export default function useSlots() {
   const [slots, setSlots] = useState({});
   const now = useNow();
@@ -89,7 +100,7 @@ export default function useSlots() {
 
     const current = slotsRef.current[slotId];
 
-    await set(ref(db, `Solar_Power_System/${cfg.relay}`), 0);
+    await writeRelays(sessionRelays(current, cfg), 0);
     await set(ref(db, `Solar_Power_System/Slots/${slotId}`), resetPayload(cfg));
 
     if (current?.txnKey) {
@@ -108,7 +119,7 @@ export default function useSlots() {
 
     const current = slotsRef.current[slotId];
 
-    await set(ref(db, `Solar_Power_System/${cfg.relay}`), 1);
+    await writeRelays(sessionRelays(current, cfg), 1);
     await update(ref(db, `Solar_Power_System/Slots/${slotId}`), { status: "occupied" });
 
     if (current?.txnKey) {
@@ -168,7 +179,7 @@ export default function useSlots() {
 
     await set(ref(db, `Solar_Power_System/Slots/${slotId}`), payload);
     /* Relay goes HIGH the moment the session actually starts */
-    await set(ref(db, `Solar_Power_System/${cfg.relay}`), startsNow ? 1 : 0);
+    await writeRelays(sessionRelays(payload, cfg), startsNow ? 1 : 0);
 
     return payload;
   }, []);

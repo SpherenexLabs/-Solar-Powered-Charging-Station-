@@ -396,6 +396,57 @@
   cursor: pointer;
 }
 
+.charging-option-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.form-box .charging-option-buttons button {
+  width: auto;
+  min-height: 46px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.form-box .charging-option-buttons button:hover {
+  transform: none;
+  border-color: var(--border-blue);
+  box-shadow: none;
+}
+
+.form-box .charging-option-buttons button.active {
+  border-color: var(--border-green);
+  background: var(--green-dim);
+  color: #34d399;
+}
+
+.form-box .charging-option-buttons button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.custom-duration-note {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+@media (max-width: 640px) {
+  .charging-option-buttons {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ══════════════════════════════════════════════════════════════
    PAYMENT GATEWAY
 ══════════════════════════════════════════════════════════════ */

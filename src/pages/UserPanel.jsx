@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ref, push, set } from "firebase/database";
+import { ref, push, set, update } from "firebase/database";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import LiveDataCard from "../components/LiveDataCard";
@@ -16,8 +16,31 @@ import {
   findDuration,
   fmtClock,
   fmtCountdown,
+  relaysForChargingOption,
   slotConfig
 } from "../lib/solarConfig";
+
+const CUSTOM_DURATION = "Custom Minutes";
+
+function priceForCustomMinutes(durations, minutes) {
+  const points = [...durations].sort((a, b) => a.minutes - b.minutes);
+  const exact = points.find((point) => point.minutes === minutes);
+  if (exact) return exact.amount;
+
+  const upperIndex = points.findIndex((point) => point.minutes > minutes);
+  if (upperIndex === 0) {
+    return Math.max(1, Math.ceil((points[0].amount / points[0].minutes) * minutes));
+  }
+  if (upperIndex === -1) {
+    const last = points.at(-1);
+    return Math.ceil((last.amount / last.minutes) * minutes);
+  }
+
+  const lower = points[upperIndex - 1];
+  const upper = points[upperIndex];
+  const progress = (minutes - lower.minutes) / (upper.minutes - lower.minutes);
+  return Math.ceil(lower.amount + progress * (upper.amount - lower.amount));
+}
 
 function UserPanel() {
   const { currentUser } = useAuth();
@@ -30,12 +53,14 @@ function UserPanel() {
   const [showPayment, setShowPayment] = useState(false);
   const [receiptView, setReceiptView] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [relayCommandBusy, setRelayCommandBusy] = useState(false);
 
   const [form, setForm] = useState({
     name: currentUser?.name || "",
     phone: "",
     chargingOption: AC_OPTIONS[0],
     duration: AC_DURATIONS[0].label,
+    customMinutes: AC_DURATIONS[0].minutes,
     startNow: true,
     timeSlot: ""
   });
@@ -43,7 +68,13 @@ function UserPanel() {
   const durations = supply === "AC" ? AC_DURATIONS : DC_DURATIONS;
   const options = supply === "AC" ? AC_OPTIONS : DC_OPTIONS;
   const tariff = findDuration(durations, form.duration);
-  const amount = tariff.amount;
+  const usingCustomDuration = form.duration === CUSTOM_DURATION;
+  const customMinutes = Math.min(720, Math.max(1, Number(form.customMinutes) || 1));
+  const durationMinutes = usingCustomDuration ? customMinutes : tariff.minutes;
+  const durationLabel = usingCustomDuration ? `${durationMinutes} Minutes` : tariff.label;
+  const amount = usingCustomDuration
+    ? priceForCustomMinutes(durations, durationMinutes)
+    : tariff.amount;
 
   const slotList = useMemo(() => Object.values(slots), [slots]);
   const relayValues = {
@@ -68,13 +99,35 @@ function UserPanel() {
     setForm((f) => ({
       ...f,
       chargingOption: next === "AC" ? AC_OPTIONS[0] : DC_OPTIONS[0],
-      duration: next === "AC" ? AC_DURATIONS[0].label : DC_DURATIONS[0].label
+      duration: next === "AC" ? AC_DURATIONS[0].label : DC_DURATIONS[0].label,
+      customMinutes: next === "AC" ? AC_DURATIONS[0].minutes : DC_DURATIONS[0].minutes
     }));
   }
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
     setForm((f) => ({ ...f, [name]: type === "checkbox" ? checked : value }));
+  }
+
+  async function selectChargingOption(option) {
+    setForm((f) => ({ ...f, chargingOption: option }));
+
+    if (supply !== "AC") return;
+
+    setRelayCommandBusy(true);
+    try {
+      // A single atomic write switches the selected physical output pair together.
+      const relays = relaysForChargingOption(option);
+      await update(
+        ref(db, "Solar_Power_System"),
+        Object.fromEntries(relays.map((relay) => [relay, 1]))
+      );
+    } catch (error) {
+      console.error("Could not switch on charging relays:", error);
+      alert("Could not turn on the selected charging outputs. Please try again.");
+    } finally {
+      setRelayCommandBusy(false);
+    }
   }
 
   /* Resolve the chosen clock time to an absolute timestamp (today, or
@@ -104,6 +157,10 @@ function UserPanel() {
       alert("Please pick a start time or choose Start Now.");
       return;
     }
+    if (usingCustomDuration && (Number(form.customMinutes) < 1 || Number(form.customMinutes) > 720)) {
+      alert("Please enter a charging duration between 1 and 720 minutes.");
+      return;
+    }
 
     setShowPayment(true);
   }
@@ -124,7 +181,7 @@ function UserPanel() {
     setBusy(true);
 
     const startTime = resolveStart();
-    const endTime = startTime + tariff.minutes * 60000;
+    const endTime = startTime + durationMinutes * 60000;
     const created = new Date();
 
     const base = {
@@ -134,8 +191,8 @@ function UserPanel() {
       phone: form.phone.trim(),
       supply,
       chargingOption: form.chargingOption,
-      duration: tariff.label,
-      durationMinutes: tariff.minutes,
+      duration: durationLabel,
+      durationMinutes,
       startTime,
       endTime,
       timeSlot: fmtClock(startTime),
@@ -157,6 +214,7 @@ function UserPanel() {
     try {
       if (supply === "AC") {
         const cfg = slotConfig(selectedSlot);
+        const relays = relaysForChargingOption(base.chargingOption, cfg.relay);
 
         /* 1. transaction record */
         const txnNode = push(ref(db, "Solar_Power_System/Transactions"));
@@ -164,7 +222,8 @@ function UserPanel() {
           ...base,
           slot: selectedSlot,
           slotName: cfg.name,
-          relay: cfg.relay,
+          relay: relays.join(" + "),
+          relays,
           relayState: startTime <= Date.now() ? 1 : 0,
           sessionStatus: startTime <= Date.now() ? "Charging" : "Reserved"
         });
@@ -176,6 +235,7 @@ function UserPanel() {
           phone: base.phone,
           supply: "AC",
           chargingOption: base.chargingOption,
+          relays,
           duration: base.duration,
           durationMinutes: base.durationMinutes,
           startTime,
@@ -189,7 +249,7 @@ function UserPanel() {
           txnKey: txnNode.key
         });
 
-        setReceiptView({ ...base, slotName: cfg.name, relay: cfg.relay });
+        setReceiptView({ ...base, slotName: cfg.name, relay: relays.join(" + "), relays });
       } else {
         /* DC — always available, no slot is blocked */
         const txnNode = push(ref(db, "Solar_Power_System/Transactions"));
@@ -235,7 +295,7 @@ function UserPanel() {
     { label: "Supply", value: supply === "AC" ? "AC Charging" : "DC Fast Charging" },
     { label: supply === "AC" ? "Slot" : "Port", value: supply === "AC" ? slotConfig(selectedSlot)?.name || "—" : "DC Port" },
     { label: "Charging Type", value: form.chargingOption },
-    { label: "Duration", value: tariff.label },
+    { label: "Duration", value: durationLabel },
     { label: "Starts", value: form.startNow ? "Immediately" : form.timeSlot }
   ];
 
@@ -393,11 +453,26 @@ function UserPanel() {
           />
 
           <label>Charging Option</label>
-          <select name="chargingOption" value={form.chargingOption} onChange={handleChange}>
+          <div className="charging-option-buttons">
             {options.map((o) => (
-              <option key={o}>{o}</option>
+              <button
+                key={o}
+                type="button"
+                className={form.chargingOption === o ? "active" : ""}
+                aria-pressed={form.chargingOption === o}
+                disabled={relayCommandBusy}
+                onClick={() => selectChargingOption(o)}
+              >
+                {relayCommandBusy && form.chargingOption === o
+                  ? "Turning on outputs…"
+                  : supply === "AC"
+                    ? `${o} · ${relaysForChargingOption(o)
+                        .map((relay) => relay.replace("Relay", "R"))
+                        .join(" + ")}`
+                    : o}
+              </button>
             ))}
-          </select>
+          </div>
 
           <label>Charging Duration</label>
           <select name="duration" value={form.duration} onChange={handleChange}>
@@ -406,7 +481,26 @@ function UserPanel() {
                 {d.label} — ₹{d.amount}
               </option>
             ))}
+            <option value={CUSTOM_DURATION}>Custom duration</option>
           </select>
+
+          {usingCustomDuration && (
+            <>
+              <label>Custom Charging Time (Minutes)</label>
+              <input
+                type="number"
+                name="customMinutes"
+                min="1"
+                max="720"
+                step="1"
+                value={form.customMinutes}
+                onChange={handleChange}
+              />
+              <small className="custom-duration-note">
+                Choose 1–720 minutes. Estimated charge: ₹{amount}.
+              </small>
+            </>
+          )}
 
           <label className="inline-check">
             <input
