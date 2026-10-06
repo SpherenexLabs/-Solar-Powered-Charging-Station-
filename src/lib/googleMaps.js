@@ -406,12 +406,23 @@ export async function findNearbyChargingStations(maps, center, radius) {
     }
   }
 
+  // Do not render a station pin on top of the user's blue GPS marker. Use the
+  // reported GPS accuracy, bounded to 25–100 metres, as the exclusion area.
+  const currentLocationExclusionKm = Math.min(
+    0.1,
+    Math.max(0.025, (Number(center.accuracy) || 0) / 1000)
+  );
+
   return stations
     .map((s) => {
       const distance = distanceKm(center, s.location);
       return { ...s, distance, availability: availabilityOf(s) };
     })
-    .filter((s) => s.distance <= radius / 1000 + 0.1)
+    .filter(
+      (s) =>
+        s.distance > currentLocationExclusionKm &&
+        s.distance <= radius / 1000 + 0.1
+    )
     .sort((a, b) => a.distance - b.distance);
 }
 
