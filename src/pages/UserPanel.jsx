@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ref, push, set, update } from "firebase/database";
+import { ref, push, set } from "firebase/database";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import LiveDataCard from "../components/LiveDataCard";
@@ -54,7 +54,6 @@ function UserPanel() {
   const [showPayment, setShowPayment] = useState(false);
   const [receiptView, setReceiptView] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [relayCommandBusy, setRelayCommandBusy] = useState(false);
   const [stationLocation, setStationLocation] = useState(null);
 
   useEffect(() => {
@@ -137,7 +136,7 @@ function UserPanel() {
     setForm((f) => ({ ...f, [name]: type === "checkbox" ? checked : value }));
   }
 
-  async function selectChargingOption(option) {
+  function selectChargingOption(option) {
     if (supply !== "AC") {
       setForm((f) => ({ ...f, chargingOption: option }));
       return;
@@ -150,40 +149,10 @@ function UserPanel() {
         ? f.chargingOptions
         : [...f.chargingOptions, option]
     }));
-
-    setRelayCommandBusy(true);
-    try {
-      // Only energize this user's selected output. Never switch other outputs
-      // off here because another user may already be charging on them.
-      const relays = relaysForChargingOption(option, form.acRelay);
-      const relayUpdates = Object.fromEntries(relays.map((relay) => [relay, 1]));
-      await update(
-        ref(db, "Solar_Power_System"),
-        relayUpdates
-      );
-    } catch (error) {
-      console.error("Could not switch on charging relays:", error);
-      alert("Could not turn on the selected charging outputs. Please try again.");
-    } finally {
-      setRelayCommandBusy(false);
-    }
   }
 
-  async function selectAcRelay(acRelay) {
+  function selectAcRelay(acRelay) {
     setForm((f) => ({ ...f, acRelay }));
-    if (supply !== "AC" || !form.chargingOptions.includes("AC Socket (230V)")) return;
-
-    setRelayCommandBusy(true);
-    try {
-      // Turn on only the selected AC output. The other AC relay can belong to
-      // another active user and must remain unchanged.
-      await update(ref(db, "Solar_Power_System"), { [acRelay]: 1 });
-    } catch (error) {
-      console.error("Could not switch the selected AC relay:", error);
-      alert("Could not turn on the selected AC relay. Please try again.");
-    } finally {
-      setRelayCommandBusy(false);
-    }
   }
 
   /* Resolve the chosen clock time to an absolute timestamp (today, or
@@ -562,12 +531,9 @@ function UserPanel() {
                     ? form.chargingOptions.includes(o)
                     : form.chargingOption === o
                 }
-                disabled={relayCommandBusy}
                 onClick={() => selectChargingOption(o)}
               >
-                {relayCommandBusy && form.chargingOption === o
-                  ? "Turning on outputs…"
-                  : supply === "AC"
+                {supply === "AC"
                     ? o === "AC Socket (230V)"
                       ? `${o} · Choose R2 or R3`
                       : `${o} · ${relaysForChargingOption(o)
@@ -579,7 +545,7 @@ function UserPanel() {
           </div>
           {supply === "AC" && (
             <small className="custom-duration-note">
-              You can select Type-C, one AC output, and Multi Pin together.
+              Select any required outputs together. Relays turn on only after successful payment.
             </small>
           )}
 
@@ -593,7 +559,6 @@ function UserPanel() {
                     type="button"
                     className={form.acRelay === relay ? "active" : ""}
                     aria-pressed={form.acRelay === relay}
-                    disabled={relayCommandBusy}
                     onClick={() => selectAcRelay(relay)}
                   >
                     {relay.replace("Relay", "Relay ")}
